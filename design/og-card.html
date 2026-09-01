@@ -1,0 +1,167 @@
+<!doctype html>
+<!--
+	Source for static/og.png, the card link previews show.
+
+	Open it in a browser sized to 1200×630 and screenshot it, or point any
+	headless browser at it with that viewport. Keep the two in step: the meta
+	tags claim the image is exactly 1200×630.
+-->
+<html>
+	<head>
+		<meta charset="utf-8" />
+		<style>
+			@font-face {
+				font-family: 'Inter';
+				src: url('../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2')
+					format('woff2');
+				font-weight: 100 900;
+			}
+			* {
+				margin: 0;
+				padding: 0;
+				box-sizing: border-box;
+			}
+			body {
+				width: 1200px;
+				height: 630px;
+				background: #0e0e0d;
+				font-family: 'Inter', system-ui, sans-serif;
+				color: #f5f5f4;
+				overflow: hidden;
+				position: relative;
+			}
+			.glow {
+				position: absolute;
+				inset: -200px -200px auto -200px;
+				height: 700px;
+				background: radial-gradient(46% 62% at 46% 0%, rgba(57, 135, 229, 0.42), transparent 72%);
+			}
+			.frame {
+				position: relative;
+				padding: 64px 72px 150px;
+				height: 100%;
+				display: flex;
+				flex-direction: column;
+			}
+			.top {
+				display: flex;
+				align-items: center;
+				gap: 20px;
+			}
+			.chip {
+				display: inline-flex;
+				align-items: center;
+				gap: 10px;
+				border: 1px solid rgba(255, 255, 255, 0.14);
+				background: rgba(255, 255, 255, 0.05);
+				border-radius: 999px;
+				padding: 9px 18px;
+				font-size: 20px;
+				color: #c9c8c3;
+				letter-spacing: 0.01em;
+			}
+			h1 {
+				margin-top: 40px;
+				font-size: 82px;
+				font-weight: 640;
+				letter-spacing: -0.035em;
+				line-height: 1.02;
+			}
+			h1 em {
+				font-style: normal;
+				background: linear-gradient(100deg, #5aa0f0, #2fc08c);
+				-webkit-background-clip: text;
+				background-clip: text;
+				color: transparent;
+			}
+			p.sub {
+				margin-top: 28px;
+				font-size: 28px;
+				line-height: 1.45;
+				color: #a3a29c;
+				max-width: 900px;
+			}
+			.trace {
+				position: absolute;
+				left: 0;
+				right: 0;
+				bottom: 0;
+				height: 150px;
+				opacity: 0.9;
+			}
+			.foot {
+				margin-top: auto;
+				position: relative;
+				z-index: 2;
+				display: flex;
+				align-items: center;
+				gap: 26px;
+				font-size: 21px;
+				color: #8b8a84;
+			}
+			.dot {
+				width: 5px;
+				height: 5px;
+				border-radius: 999px;
+				background: #4a4945;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="glow"></div>
+
+		<svg class="trace" viewBox="0 0 1200 150" preserveAspectRatio="none">
+			<defs>
+				<linearGradient id="fill" x1="0" y1="0" x2="0" y2="150" gradientUnits="userSpaceOnUse">
+					<stop offset="0" stop-color="#3987e5" stop-opacity="0.30" />
+					<stop offset="1" stop-color="#3987e5" stop-opacity="0" />
+				</linearGradient>
+				<linearGradient id="line" x1="0" y1="0" x2="1200" y2="0" gradientUnits="userSpaceOnUse">
+					<stop offset="0" stop-color="#3987e5" />
+					<stop offset="1" stop-color="#199e70" />
+				</linearGradient>
+			</defs>
+			<path
+				d="M0 132 L60 130 L110 86 L170 68 L230 74 L290 44 L350 41 L410 87 L470 122 L520 127 L580 90 L640 50 L700 33 L760 37 L820 68 L880 55 L940 24 L1000 31 L1060 78 L1130 120 L1200 130 L1200 150 L0 150 Z"
+				fill="url(#fill)"
+			/>
+			<path
+				d="M0 132 L60 130 L110 86 L170 68 L230 74 L290 44 L350 41 L410 87 L470 122 L520 127 L580 90 L640 50 L700 33 L760 37 L820 68 L880 55 L940 24 L1000 31 L1060 78 L1130 120 L1200 130"
+				fill="none"
+				stroke="url(#line)"
+				stroke-width="4"
+				stroke-linejoin="round"
+				stroke-linecap="round"
+			/>
+		</svg>
+
+		<div class="frame">
+			<div class="top">
+				<svg width="76" height="76" viewBox="0 0 64 64">
+					<defs>
+						<linearGradient id="badge" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+							<stop offset="0" stop-color="#3987e5" />
+							<stop offset="1" stop-color="#199e70" />
+						</linearGradient>
+					</defs>
+					<rect width="64" height="64" rx="15" fill="url(#badge)" />
+					<path
+						d="M10 42 L23 42 L31 18 L41 42 L54 26"
+						fill="none"
+						stroke="#fff"
+						stroke-width="6.5"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					/>
+				</svg>
+				<span class="chip">Runs entirely in your browser · nothing is uploaded</span>
+			</div>
+
+			<h1>Read the month<br />your car <em>quietly recorded</em></h1>
+			<p class="sub">
+				An XPeng EU Data Act export becomes trips, charging sessions, battery health and the routine
+				hidden in a million rows of telemetry.
+			</p>
+		</div>
+	</body>
+</html>

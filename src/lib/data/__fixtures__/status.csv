@@ -1,0 +1,5 @@
+﻿vin,vmodel,timer,ds,ldcu_driverdoorajarst,rdcu_psngrdoorajarst,ldcu_rldoorajarst,rdcu_rrdoorajarst,ldcu_flwinposstfb,ldcu_rlwinposstfb,frwinposstfb,rrwinposstfb,rdm_tropenersts,ldcu_tpmsprfl,ldcu_tpmsprfr,ldcu_tpmsprrl,ldcu_tpmsprrr
+L1NTEST00000000001,F30b,1785600000,20260802,0.0,0.0,0.0,0.0,,,,,,255.75,255.75,258.5,264.0
+L1NTEST00000000001,F30b,1785600001,20260802,1.0,0.0,0.0,0.0,,,,,,255.75,255.75,258.5,264.0
+L1NTEST00000000001,F30b,1785600002,20260802,0.0,0.0,1.0,0.0,,,,,,701.25,701.25,701.25,701.25
+L1NTEST00000000001,F30b,1785600003,20260802,,0.0,,0.0,,,,,,,,,

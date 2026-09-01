@@ -1,0 +1,3 @@
+﻿vin,vmodel,timer,ds,ipuf_actrotspd,ipur_actrotspd,ipuf_acttorq,ipur_acttorq,ipuf_rotoracttemp,ipur_rotoracttemp,bms_battvolt,bms_battcurr,ldcu_chrgpwr,ldcu_bms_soc_disp,bms_batttempmax_gb,bms_batttempmin_gb,bms_celltempmaxnum_gb,bms_celltempminnum_gb,ldcu_dstbatdisp_dynamic
+L1NTEST00000000001,F30b,1785600004,20260802,,0.0,,0.0,,32.0,618.0,-15.199999999999818,10.100000000000001,88.0,30.0,28.0,15.0,23.0,459.0
+L1NTEST00000000001,F30b,1785600005,20260802,,0.0,,0.0,,32.0,618.0,-15.2,10.100000000000001,89.0,30.0,28.0,15.0,23.0,462.0
