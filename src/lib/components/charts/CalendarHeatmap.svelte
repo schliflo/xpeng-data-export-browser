@@ -92,23 +92,23 @@
 
 <figure bind:this={frame} class="relative flex flex-col gap-3">
 	<div
-		class="flex items-end gap-1.5 overflow-x-auto pb-1"
+		class="flex items-end justify-center gap-2 overflow-x-auto pb-1"
 		role="group"
 		aria-label="{label} per day"
 		onpointerleave={() => (hovered = null)}
 	>
-		<div class="mr-1 flex shrink-0 flex-col gap-[3px] text-[10px] text-muted-foreground">
+		<div class="mr-1 flex shrink-0 flex-col gap-[4px] text-[10px] text-muted-foreground">
 			{#each WEEKDAYS as day, i (day)}
-				<span class="flex h-4 items-center leading-none">{i % 2 === 1 ? day : ''}</span>
+				<span class="flex h-6 items-center leading-none">{i % 2 === 1 ? day : ''}</span>
 			{/each}
 		</div>
 		{#each weeks as week, w (w)}
-			<div class="flex shrink-0 flex-col gap-[3px]">
+			<div class="flex shrink-0 flex-col gap-[4px]">
 				{#each week as day, d (d)}
 					{#if day}
 						<button
 							type="button"
-							class="h-4 w-4 rounded-[3px] transition-transform hover:scale-125 focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:outline-none"
+							class="h-6 w-6 rounded-[5px] transition-transform hover:scale-115 focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:outline-none"
 							class:ring-2={selected === day.date}
 							style="background: {tone(day.value)}"
 							aria-label="{prettyDay(day.date)}, {num(day.value, 1)} {unit}"
@@ -118,7 +118,7 @@
 							onclick={() => onSelect?.(day.date)}
 						></button>
 					{:else}
-						<span class="h-4 w-4"></span>
+						<span class="h-6 w-6"></span>
 					{/if}
 				{/each}
 			</div>

@@ -9,6 +9,41 @@ Everything runs in the browser. There is no server to send anything to: the app
 is a set of static files, the export is parsed by a worker inside the page, and
 closing the tab discards it.
 
+## What it looks like
+
+All screenshots use the built-in demonstration month, so no real vehicle
+appears in them.
+
+![The landing page: a drop zone, and the promise that nothing is uploaded](docs/screenshots/landing.png)
+
+The export never leaves the page. Drop the files in, or explore a generated
+demonstration month first.
+
+![One card from the opening sequence: longest single trip, 192 km](docs/screenshots/wrapped.png)
+
+Parsing ends in a full-screen sequence of the month's findings, one per screen —
+the things you would not have thought to ask for.
+
+![The overview: distance per day, and driving by weekday and hour](docs/screenshots/overview.png)
+
+Then the dashboard. Every chart names the point under the pointer; here the
+punchcard is reporting an hour the car never once moved in.
+
+![A single trip, with speed, power and charge sharing one cursor](docs/screenshots/trip.png)
+
+A trip second by second. Hovering any panel reads out that instant in all of
+them, so one moment can be read across speed, power and state of charge at once.
+
+![Driving style: a g-g diagram beside speed and pedal histograms](docs/screenshots/driving.png)
+
+Every second of driving placed by the forces on the car. Cautious driving fills
+a narrow cross; the outer rings are where grip runs out.
+
+![What this file knows about you: no location records, VIN on every row](docs/screenshots/privacy.png)
+
+And a plain account of what the file gives away — none of which needed a single
+map coordinate.
+
 ## Getting your data
 
 Request it from [xpeng.com/data-act](https://www.xpeng.com/data-act). You
