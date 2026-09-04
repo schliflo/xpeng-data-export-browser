@@ -1,3 +1,18 @@
-allowBuilds:
+# A single-package repository, so this field looks redundant. It is not: pnpm
+# 10.3 and older refuse to read a workspace file that lacks it, and a build
+# image does not always run the pnpm version its log claims. Without this line
+# the install stops at "packages field missing or empty".
+packages:
+  - '.'
+
+# Approving the two dependencies with install scripts. Both ship their real
+# binary in a platform-specific package, so the scripts themselves are a
+# formality — but pnpm 11 fails the whole install when a script is left
+# unapproved, and the setting was renamed on the way there. Keeping both names
+# means any pnpm from 9 to 11 installs this repository without complaint.
+onlyBuiltDependencies: # pnpm 10
+  - workerd
+  - esbuild
+allowBuilds: # pnpm 11
   workerd: true
   esbuild: true
