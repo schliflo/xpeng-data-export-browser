@@ -1,5 +1,6 @@
 <script lang="ts">
 	import DropZone from '$lib/components/app/DropZone.svelte';
+	import ExportLibrary from '$lib/components/app/ExportLibrary.svelte';
 	import ParseProgress from '$lib/components/app/ParseProgress.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
@@ -95,6 +96,7 @@
 						<ArrowRightIcon class="size-4" />
 					</Button>
 				</div>
+				<ExportLibrary />
 			</div>
 
 			<section class="mt-20 grid gap-4 sm:grid-cols-3">
@@ -118,11 +120,12 @@
 						Nothing leaves this tab
 					</h2>
 					<p class="text-sm leading-relaxed text-muted-foreground">
-						There is no server to send anything to. The files are read by a worker inside this page,
-						held in memory, and forgotten the moment you close it — no upload, no storage, no
-						analytics. After the first visit your browser keeps the app's own files, so it opens
-						without a connection; the export is never among them. Your vehicle identification number
-						appears on every row of the export; here it stays masked unless you ask to see it.
+						There is no server to send anything to. The files are read by a worker inside this page
+						— no upload, no analytics, nothing that travels. What the app does keep, it keeps here:
+						a copy goes into this browser's own storage so an export can be reopened without
+						dropping the files in again, and one click removes it. Your vehicle identification
+						number appears on every row of the export; here it stays masked unless you ask to see
+						it.
 					</p>
 				</div>
 

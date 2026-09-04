@@ -10,13 +10,13 @@
  * Every file the app is made of — the hashed build output, the static files
  * and the prerendered pages, about a megabyte and a half in all — is stored
  * when a version of this worker installs, and served from that store from
- * then on. The export is never part of it: what is kept is the app, not
- * anything dropped into it.
+ * then on. No telemetry is ever part of it: kept exports live in the browser's
+ * database instead, which is what makes them survive a new deployment.
  *
  * A newer build ships a new worker with a new store name. It installs in the
  * background and waits; the page offers a reload, and only once that is taken
  * does it take over and clear the old store. Taking over unasked would restart
- * every open tab, and the export they hold lives in memory only.
+ * every open tab, and the export on screen in each of them is held in memory.
  */
 
 import { base, build, files, prerendered, version } from '$service-worker';

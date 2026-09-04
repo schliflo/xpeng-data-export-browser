@@ -3,8 +3,8 @@
   is waiting.
 
   SvelteKit registers the service worker itself; this only listens to it. The
-  reload that applies an update is never automatic: the export lives in memory,
-  and a page that restarted on its own would throw it away mid-read.
+  reload that applies an update is never automatic: the export on screen is
+  held in memory, and a page that restarted on its own would clear it mid-read.
 -->
 <script lang="ts">
 	import { onMount } from 'svelte';
@@ -20,7 +20,8 @@
 
 		const offerUpdate = (waiting: ServiceWorker) => {
 			toast('A newer version is available', {
-				description: 'Reload to use it. An export you have open will need to be dropped in again.',
+				description:
+					'Reload to use it. Anything open now can be opened again from the start page afterwards.',
 				duration: Number.POSITIVE_INFINITY,
 				closeButton: true,
 				action: {
@@ -59,7 +60,7 @@
 			if (firstInstall) {
 				toast('Ready to work offline', {
 					description:
-						'The app is now stored in this browser and opens without a connection. Your export is not.'
+						'The app is now stored in this browser and opens without a connection. The exports you keep are here too.'
 				});
 			}
 			if (registration.waiting) offerUpdate(registration.waiting);

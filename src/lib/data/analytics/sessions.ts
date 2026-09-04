@@ -8,6 +8,8 @@
  * trips and charging sessions are searched for inside them.
  */
 
+import { coalesceWindows, type CoverageWindow, type Dataset } from '../store/columnar';
+
 export interface Span {
 	/** Inclusive start index into the dataset's time array. */
 	start: number;
@@ -64,4 +66,34 @@ export function sleepGaps(spans: Span[]): Span[] {
 		});
 	}
 	return gaps;
+}
+
+/**
+ * The stretches of time the data can speak for, in order and without overlaps.
+ *
+ * A single export accounts for everything between its first and last sample.
+ * A merged one has a window per export and holes in between, and those holes
+ * are not silence — they are absence. Nothing downstream may read a hole as a
+ * car that sat still for three weeks.
+ */
+export function coverageWindows(dataset: Dataset): CoverageWindow[] {
+	if (dataset.coverage?.length) return coalesceWindows(dataset.coverage);
+	if (dataset.time.length === 0) return [];
+	return [
+		{
+			startTime: dataset.time[0],
+			endTime: dataset.time[dataset.time.length - 1],
+			exportId: dataset.exportId
+		}
+	];
+}
+
+/** True when the whole interval falls inside one window, holes excluded. */
+export function insideOneWindow(windows: CoverageWindow[], from: number, to: number): boolean {
+	return windows.some((window) => from >= window.startTime && to <= window.endTime);
+}
+
+/** Seconds accounted for by the coverage windows. */
+export function coveredSeconds(windows: CoverageWindow[]): number {
+	return windows.reduce((sum, window) => sum + (window.endTime - window.startTime), 0);
 }

@@ -41,9 +41,17 @@
 	const stats = $derived(data.derived);
 	const section = $derived(sections.find((s) => s.href === page.url.pathname));
 
+	/** What is on screen: a fresh drop, a kept export, or several joined up. */
+	const sourceLabel = $derived.by(() => {
+		if (data.source.kind === 'merged') return `${data.source.ids.length} exports merged`;
+		if (data.isDemo) return 'Demonstration month';
+		return data.source.kind === 'reopened' ? 'Kept export' : 'Your export';
+	});
+
 	onMount(() => {
-		// The data lives in memory only, so a reloaded deep link has nothing
-		// to show and belongs back at the start.
+		// The dataset is not reloaded on navigation, so a deep link opened cold
+		// has nothing to show and belongs back at the start — where the exports
+		// kept in this browser are listed, ready to open again.
 		if (!data.isReady) goto('/');
 	});
 </script>
@@ -67,10 +75,15 @@
 						<SparklesIcon class="size-4 text-white" />
 					</div>
 					<div class="flex min-w-0 flex-col group-data-[collapsible=icon]:hidden">
-						<span class="truncate text-sm font-medium">Your export</span>
+						<span class="truncate text-sm font-medium">{sourceLabel}</span>
 						<span class="truncate text-xs text-muted-foreground">
 							{dateOnly(stats.startTime)} – {dateOnly(stats.endTime)}
 						</span>
+						{#if stats.sources > 1}
+							<span class="truncate text-xs text-muted-foreground">
+								{stats.recordedDays} days recorded
+							</span>
+						{/if}
 					</div>
 				</div>
 			</Sidebar.Header>
@@ -131,6 +144,11 @@
 					{#if data.isDemo}
 						<Badge variant="secondary">Demo data</Badge>
 					{/if}
+					{#if data.source.kind === 'merged'}
+						<Badge variant="secondary">Merged · {data.source.ids.length}</Badge>
+					{:else if data.source.kind === 'reopened'}
+						<Badge variant="secondary">Reopened</Badge>
+					{/if}
 
 					<Popover.Root>
 						<Popover.Trigger class={buttonVariants({ variant: 'ghost', size: 'icon' })}>
@@ -172,7 +190,7 @@
 									goto('/');
 								}}
 							>
-								Load a different export
+								Open another export
 							</Button>
 						</Popover.Content>
 					</Popover.Root>

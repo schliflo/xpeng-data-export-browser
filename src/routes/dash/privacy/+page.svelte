@@ -132,14 +132,25 @@
 				disconnect from the network entirely and keep using the page.
 			</p>
 			<p>
-				Nothing is written to storage either. Closing this tab discards the
-				{num(dataset.time.length)} samples currently in memory, and reopening it starts from an empty
-				page.
+				{#if stats.sources > 1}
+					Each of the exports behind these {num(dataset.time.length)} samples is kept in this browser's
+					own storage, so they can be opened again without the files.
+				{:else}
+					A copy of the {num(dataset.time.length)} samples in front of you is kept in this browser's own
+					storage, so the export can be opened again without the files.
+				{/if}
+				It stays on this device — there is nowhere else for it to go. The start page lists everything
+				kept and removes any of it in a click, and your browser's own site-data controls clear the lot.
 			</p>
 			<p>
-				The export covers a rolling {stats.windowDays} days. If you want a longer record, request a new
-				export before the old one ages out, and keep the files yourself — this window is all that was
-				given to you.
+				{#if stats.sources > 1}
+					These {stats.sources} exports cover {stats.recordedDays} days between them. Each one XPeng sends
+					covers a rolling thirty days, so keeping them is the only way to hold a record longer than that.
+				{:else}
+					The export covers a rolling {stats.windowDays} days. Request the next one before this window
+					ages out, then open them together: kept side by side they become one continuous record, which
+					is more than you were ever given at once.
+				{/if}
 			</p>
 		</Card.Content>
 	</Card.Root>

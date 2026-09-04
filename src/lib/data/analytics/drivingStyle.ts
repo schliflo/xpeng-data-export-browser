@@ -6,6 +6,7 @@
  * the driving itself rather than the 80% of the export spent parked.
  */
 
+import { NULL_CODE } from '../schema/columns';
 import { valueAt, type Dataset } from '../store/columnar';
 
 export interface Histogram {
@@ -91,6 +92,11 @@ export interface ExtremeEvent {
 /**
  * The strongest moments of a signal, keeping only one event per `spacing`
  * seconds so a single hard stop does not fill the whole list.
+ *
+ * Each pass takes the best sample no previous winner has already claimed. A
+ * year of samples is fourteen million readings, and collecting them all to be
+ * sorted would allocate an object for every one of them; ten sweeps over a
+ * typed array cost nothing by comparison.
  */
 export function topEvents(
 	dataset: Dataset,
@@ -103,25 +109,37 @@ export function topEvents(
 	if (!column) return [];
 	const speed = dataset.columns.get('esp_vehspd');
 
-	const candidates: ExtremeEvent[] = [];
-	for (let i = 0; i < dataset.time.length; i++) {
-		const value = valueAt(column, i);
-		if (Number.isNaN(value)) continue;
-		candidates.push({
-			time: dataset.time[i],
-			index: i,
-			value,
-			speed: speed ? valueAt(speed, i) : NaN
-		});
-	}
-	candidates.sort((a, b) => (b.value - a.value) * sign);
+	const { dtype, scale, offset } = column.spec;
+	const nullCode = NULL_CODE[dtype];
+	const isFloat = dtype === 'f32';
+	const raws = column.data;
+	const time = dataset.time;
 
 	const chosen: ExtremeEvent[] = [];
-	for (const candidate of candidates) {
-		if (chosen.length >= count) break;
-		if (chosen.some((e) => Math.abs(e.time - candidate.time) < spacing)) continue;
-		chosen.push(candidate);
+	while (chosen.length < count) {
+		let bestIndex = -1;
+		let bestRanked = -Infinity;
+
+		for (let i = 0; i < time.length; i++) {
+			const raw = raws[i];
+			if (isFloat ? Number.isNaN(raw) : raw === nullCode) continue;
+			const ranked = (raw * scale + offset) * sign;
+			if (ranked <= bestRanked) continue;
+			const t = time[i];
+			if (chosen.some((event) => Math.abs(event.time - t) < spacing)) continue;
+			bestRanked = ranked;
+			bestIndex = i;
+		}
+
+		if (bestIndex === -1) break;
+		chosen.push({
+			time: time[bestIndex],
+			index: bestIndex,
+			value: raws[bestIndex] * scale + offset,
+			speed: speed ? valueAt(speed, bestIndex) : NaN
+		});
 	}
+
 	return chosen;
 }
 

@@ -9,7 +9,7 @@
  */
 
 import { searchTime, valueAt, type Column, type Dataset } from '../store/columnar';
-import { segmentAwake, type Span } from './sessions';
+import { coverageWindows, insideOneWindow, segmentAwake, type Span } from './sessions';
 import type { ChargeSession } from './charging';
 
 export interface DrainEvent {
@@ -74,10 +74,16 @@ export function phantomDrain(
 	};
 	if (!soc) return empty;
 
+	// Gaps that straddle two exports are not the car keeping quiet, they are
+	// the record stopping. Only silences inside one covered window count.
+	const windows = coverageWindows(dataset);
 	const spans = segmentAwake(dataset.time);
 	let longestSleepHours = 0;
 	for (let i = 1; i < spans.length; i++) {
-		const hours = (spans[i].startTime - spans[i - 1].endTime) / 3600;
+		const from = spans[i - 1].endTime;
+		const to = spans[i].startTime;
+		if (!insideOneWindow(windows, from, to)) continue;
+		const hours = (to - from) / 3600;
 		if (hours > longestSleepHours) longestSleepHours = hours;
 	}
 
@@ -92,6 +98,10 @@ export function phantomDrain(
 		const to = ordered[i].startTime;
 		const hours = (to - from) / 3600;
 		if (hours < MIN_PARKED_HOURS) continue;
+
+		// A pause spanning the hole between two exports says nothing about
+		// drain: the car may have driven and charged all week unobserved.
+		if (!insideOneWindow(windows, from, to)) continue;
 
 		// Any charging in between means the change is not drain.
 		if (sessions.some((s) => s.endTime >= from && s.startTime <= to)) continue;

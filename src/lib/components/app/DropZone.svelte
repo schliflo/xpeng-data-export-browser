@@ -1,8 +1,9 @@
 <!--
   File intake.
 
-  Accepts the CSVs loose or the ZIP exactly as XPeng delivers it. Nothing is
-  uploaded: the files are handed to a worker in this tab and read there.
+  Accepts the CSVs loose or the ZIP exactly as XPeng delivers it, and a backup
+  of exports kept earlier. Nothing is uploaded: the files are handed to a worker
+  in this tab and read there.
 -->
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
@@ -58,7 +59,9 @@
 
 		<div class="space-y-1">
 			<p class="text-lg font-medium">Drop your export here</p>
-			<p class="text-sm text-muted-foreground">The ZIP from XPeng, or the CSV files inside it</p>
+			<p class="text-sm text-muted-foreground">
+				The ZIP from XPeng, the CSV files inside it, or a backup made here
+			</p>
 		</div>
 
 		<Button onclick={() => input?.click()} size="lg">Choose files</Button>

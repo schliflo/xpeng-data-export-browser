@@ -3,7 +3,7 @@
  * plain objects without ever touching the raw sample arrays.
  */
 
-import type { Dataset } from '../store/columnar';
+import type { CoverageWindow, Dataset } from '../store/columnar';
 import { detectTrips, type Trip } from './trips';
 import { summarizeCharging, type ChargingHabits } from './charging';
 import { bucketDays, punchcard, type DayBucket } from './daily';
@@ -28,15 +28,31 @@ import {
 	type Histogram,
 	type SpeedProfile
 } from './drivingStyle';
-import { segmentAwake, totalCoverage, type Span } from './sessions';
+import {
+	coverageWindows,
+	coveredSeconds,
+	segmentAwake,
+	totalCoverage,
+	type Span
+} from './sessions';
 import { buildFacts, type Fact } from './facts';
 
 export interface DerivedData {
 	timeZone: string;
+	/** Calendar days from the first sample to the last, holes included. */
 	windowDays: number;
 	startTime: number;
 	endTime: number;
+	/** Seconds the car was awake and logging. */
 	coverageSeconds: number;
+	/** The stretches of time this data accounts for; several once merged. */
+	coverage: CoverageWindow[];
+	/** Seconds inside those stretches — the honest denominator for shares. */
+	recordedSeconds: number;
+	/** Calendar days an export actually covers. */
+	recordedDays: number;
+	/** How many exports were merged to produce this. */
+	sources: number;
 	awakeSpans: Span[];
 	trips: Trip[];
 	charging: ChargingHabits;
@@ -81,6 +97,9 @@ export function analyze(dataset: Dataset, timeZone: string): DerivedData {
 	const hardestAccels = topEvents(dataset, 'esp_vehlongaccel', 10, { sign: 1 });
 	const fastestMoments = topEvents(dataset, 'esp_vehspd', 10, { sign: 1, spacing: 600 });
 
+	const coverage = coverageWindows(dataset);
+	const recordedDays = days.filter((day) => day.covered).length;
+
 	const startTime = dataset.time.length ? dataset.time[0] : 0;
 	const endTime = dataset.time.length ? dataset.time[dataset.time.length - 1] : 0;
 	const windowDays = Math.max(1, Math.round((endTime - startTime) / 86400));
@@ -99,6 +118,12 @@ export function analyze(dataset: Dataset, timeZone: string): DerivedData {
 		startTime,
 		endTime,
 		coverageSeconds: totalCoverage(awakeSpans),
+		coverage,
+		recordedSeconds: Math.max(1, coveredSeconds(coverage)),
+		recordedDays,
+		// The exports behind this, not the windows: two that overlap still
+		// came from two files.
+		sources: dataset.coverage?.length ?? 1,
 		awakeSpans,
 		trips,
 		charging,
@@ -134,10 +159,12 @@ export function analyze(dataset: Dataset, timeZone: string): DerivedData {
 		speed,
 		hardestBrakes,
 		timeZone,
-		windowDays
+		recordedSeconds: derived.recordedSeconds,
+		recordedDays,
+		sources: derived.sources
 	});
 
 	return derived;
 }
 
-export type { Trip, ChargingHabits, DayBucket, Fact, Span };
+export type { Trip, ChargingHabits, DayBucket, Fact, Span, CoverageWindow };

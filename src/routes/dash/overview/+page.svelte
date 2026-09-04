@@ -12,10 +12,14 @@
 
 	const totalKm = $derived(stats.days.reduce((sum, day) => sum + day.distanceKm, 0));
 	const drivingSeconds = $derived(stats.trips.reduce((sum, trip) => sum + trip.movingSeconds, 0));
-	const coverage = $derived(dataset.time.length / (stats.windowDays * 86400));
+	// Measured against the time the exports actually account for, not the
+	// calendar span: a merged record has holes that were never recorded.
+	const coverage = $derived(dataset.time.length / stats.recordedSeconds);
 	const consumption = $derived(totalKm > 0 ? (stats.charging.totalKwh / totalKm) * 100 : NaN);
 
-	const calendar = $derived(stats.days.map((day) => ({ date: day.date, value: day.distanceKm })));
+	const calendar = $derived(
+		stats.days.map((day) => ({ date: day.date, value: day.distanceKm, covered: day.covered }))
+	);
 
 	let selectedDay = $state<string | null>(null);
 	const dayDetail = $derived(stats.days.find((day) => day.date === selectedDay) ?? null);
@@ -31,7 +35,7 @@
 					unit="km"
 					size="sm"
 					accent="--viz-1"
-					detail="{num(stats.trips.length)} trips over {stats.windowDays} days"
+					detail="{num(stats.trips.length)} trips over {stats.recordedDays} days"
 				/>
 			</Card.Content>
 		</Card.Root>
@@ -43,7 +47,7 @@
 					value={duration(drivingSeconds, 'short')}
 					size="sm"
 					accent="--viz-3"
-					detail="{percent(drivingSeconds / (stats.windowDays * 86400), 1)} of the month"
+					detail="{percent(drivingSeconds / stats.recordedSeconds, 1)} of the time recorded"
 				/>
 			</Card.Content>
 		</Card.Root>
@@ -73,7 +77,9 @@
 					unit="km"
 					size="sm"
 					accent="--viz-7"
-					detail="Rose by {num(stats.odometerEnd - stats.odometerStart)} km in this window"
+					detail={stats.sources > 1
+						? `Rose by ${num(stats.odometerEnd - stats.odometerStart)} km, including driving between the exports`
+						: `Rose by ${num(stats.odometerEnd - stats.odometerStart)} km in this window`}
 				/>
 			</Card.Content>
 		</Card.Root>
@@ -82,9 +88,12 @@
 	<div class="grid gap-6 lg:grid-cols-2">
 		<Card.Root>
 			<Card.Header>
-				<Card.Title>Every day of the month</Card.Title>
+				<Card.Title>Every day recorded</Card.Title>
 				<Card.Description>
 					Distance driven per day. Select a day to see what happened.
+					{#if stats.sources > 1}
+						Outlined days fall between exports and were never recorded.
+					{/if}
 				</Card.Description>
 			</Card.Header>
 			<Card.Content>
@@ -146,7 +155,12 @@
 	<Card.Root>
 		<Card.Header>
 			<Card.Title>What the recording covers</Card.Title>
-			<Card.Description>The car logs once a second, but only while it is awake.</Card.Description>
+			<Card.Description>
+				The car logs once a second, but only while it is awake.
+				{#if stats.sources > 1}
+					These {stats.sources} exports cover {stats.recordedDays} days between them.
+				{/if}
+			</Card.Description>
 		</Card.Header>
 		<Card.Content class="grid gap-6 sm:grid-cols-3">
 			<BigStat
@@ -154,7 +168,7 @@
 				value={num(dataset.time.length)}
 				size="sm"
 				accent="--viz-3"
-				detail="{percent(coverage)} of every second in the window"
+				detail="{percent(coverage)} of every second the exports cover"
 			/>
 			<BigStat
 				kicker="Longest silence"

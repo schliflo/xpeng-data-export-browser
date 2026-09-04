@@ -14,9 +14,11 @@ import type { Column } from './columnar';
 /**
  * Bucket sizes, each four times coarser than the last. Steps this close matter:
  * a wider ladder makes the chart lurch between far too much detail and far too
- * little as the view is zoomed.
+ * little as the view is zoomed. The coarsest levels only ever get built for a
+ * merged timeline of several exports, where a whole year has to fit on a chart
+ * a thousand pixels wide.
  */
-const LEVEL_FACTORS = [4, 16, 64, 256, 1024, 4096];
+const LEVEL_FACTORS = [4, 16, 64, 256, 1024, 4096, 16384, 65536];
 
 export interface PyramidLevel {
 	factor: number;
