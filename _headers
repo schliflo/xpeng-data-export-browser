@@ -1,0 +1,4 @@
+# The service worker must always be checked against the server: a copy kept
+# by a cache would hold readers on an old build indefinitely.
+/service-worker.js
+  Cache-Control: no-cache

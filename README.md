@@ -79,6 +79,30 @@ pnpm check        # types
 pnpm build        # production build
 ```
 
+## Working offline
+
+After the first visit the app opens without a connection. A service worker
+stores the app's own files — scripts, styles, fonts, icons and pages, about
+1.5 MB in all — when it installs, and serves them from that store from then
+on. The export is never stored: what is kept is the app, not anything dropped
+into it, and closing the tab still discards the data. The browser's menu can
+also install it as an app, which opens it in a window of its own.
+
+A new deployment installs quietly in the background and waits. The page then
+offers a reload, and nothing happens until you take it: a page that restarted
+on its own would throw away the export it holds.
+
+Trying it needs a production build, since the dev server serves everything
+live:
+
+```sh
+pnpm build
+pnpm preview      # http://localhost:4173
+```
+
+Open it once, then stop the server — or set the browser's network panel to
+offline — and reload.
+
 ## Deploying to Cloudflare Workers
 
 Every route is prerendered and there are no server routes, so the Worker only
@@ -149,6 +173,8 @@ src/lib/data/
   analytics/   trips, charging, battery, driving style, doors, facts
   worker/      the worker and its message protocol
 src/lib/demo/  synthetic month generator
+src/lib/offline/             what the service worker keeps, and how it finds it
+src/service-worker.ts        the service worker itself
 src/lib/components/charts/   uPlot wrapper, calendar, punchcard, g-g diagram
 src/routes/    landing, the opening sequence, and the dashboard sections
 src/lib/seo.ts               site metadata, shared by every page
@@ -164,7 +190,8 @@ registry does not know about are still parsed and still plottable.
 
 `pnpm test` covers the parser (byte-order marks, chunk boundaries, duplicates,
 part ordering, sentinels), the analytics against hand-built cases with known
-answers, and the demo generator against the ground truth it was built from.
+answers, the demo generator against the ground truth it was built from, and
+what the service worker decides to keep.
 
 If a `.samples/` directory is present it is also checked against a real export
 end to end; that directory is git-ignored, because a real export identifies a

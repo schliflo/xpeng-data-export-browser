@@ -2,6 +2,8 @@
 	import './layout.css';
 	import 'uplot/dist/uPlot.min.css';
 	import { ModeWatcher } from 'mode-watcher';
+	import { Toaster } from '$lib/components/ui/sonner';
+	import OfflineSupport from '$lib/components/app/OfflineSupport.svelte';
 	import { AUTHOR, AUTHOR_URL, SITE_DESCRIPTION, SITE_NAME, SITE_URL, absolute } from '$lib/seo';
 
 	let { children } = $props();
@@ -40,5 +42,7 @@
 
 <!-- Dark by default: the charts were stepped for a dark surface first. -->
 <ModeWatcher defaultMode="dark" />
+<Toaster />
+<OfflineSupport />
 
 {@render children()}

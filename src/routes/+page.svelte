@@ -120,8 +120,9 @@
 					<p class="text-sm leading-relaxed text-muted-foreground">
 						There is no server to send anything to. The files are read by a worker inside this page,
 						held in memory, and forgotten the moment you close it — no upload, no storage, no
-						analytics. Your vehicle identification number appears on every row of the export; here
-						it stays masked unless you ask to see it.
+						analytics. After the first visit your browser keeps the app's own files, so it opens
+						without a connection; the export is never among them. Your vehicle identification number
+						appears on every row of the export; here it stays masked unless you ask to see it.
 					</p>
 				</div>
 

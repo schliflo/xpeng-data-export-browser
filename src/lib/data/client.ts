@@ -5,7 +5,10 @@
  * the app can await a dataset without knowing a worker exists.
  */
 
-import DataWorker from './worker/data.worker?worker';
+// Inlined into the bundle rather than emitted as a file of its own: Vite
+// leaves web workers out of the manifest the service worker precaches from,
+// and the parser is the one thing the app cannot do without offline.
+import DataWorker from './worker/data.worker?worker&inline';
 import {
 	unpackDataset,
 	type PackedDataset,

@@ -2,6 +2,7 @@
 	"name": "XPeng Data Export Browser",
 	"short_name": "XPeng Export",
 	"description": "Explore a month of trips, charging, battery health and driving style from your XPeng EU Data Act export, entirely in your browser.",
+	"id": "/",
 	"start_url": "/",
 	"scope": "/",
 	"display": "standalone",
