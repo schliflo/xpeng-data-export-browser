@@ -48,7 +48,7 @@ async function keep(
 	}
 	try {
 		post({ type: 'progress', phase: 'storing', loaded: 0, total: 1 });
-		const { record, blobs } = encodeExport(packed, derived, isDemo);
+		const { record, blobs } = await encodeExport(packed, derived, isDemo);
 		const { replaced } = await putExport(record, blobs);
 		return { ok: true, id: record.id, bytes: record.storedBytes, replaced };
 	} catch (error) {

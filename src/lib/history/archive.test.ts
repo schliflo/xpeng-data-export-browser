@@ -15,7 +15,7 @@ import {
 
 const ZONE = 'Europe/Berlin';
 
-function entry(seed = 7): BackupEntry {
+async function entry(seed = 7): Promise<BackupEntry> {
 	const dataset = generateDemoDataset({ seed, days: 3, timeZone: ZONE });
 	const derived = analyze(dataset, ZONE);
 	const { packed } = packDataset(dataset);
@@ -35,9 +35,9 @@ function archive(entries: BackupEntry[]): Uint8Array {
 }
 
 describe('writeBackup', () => {
-	it('round-trips every export it was given', () => {
-		const first = entry(7);
-		const second = entry(21);
+	it('round-trips every export it was given', async () => {
+		const first = await entry(7);
+		const second = await entry(21);
 		const bytes = archive([first, second]);
 
 		expect(isBackupArchive(bytes)).toBe(true);
@@ -59,7 +59,7 @@ describe('writeBackup', () => {
 		}
 	});
 
-	it('names the file by date and count, and never by vehicle', () => {
+	it('names the file by date and count, and never by vehicle', async () => {
 		const name = backupFileName(3, new Date('2026-09-04T10:00:00Z'));
 
 		expect(name).toBe('xpeng-exports-3-backup-2026-09-04.zip');
@@ -70,7 +70,7 @@ describe('writeBackup', () => {
 });
 
 describe('isBackupArchive', () => {
-	it('rejects an ordinary ZIP of export CSVs', () => {
+	it('rejects an ordinary ZIP of export CSVs', async () => {
 		const zip = zipSync({
 			'DA123_dwd_opp_gdpr_veh_driving_status_di.csv': strToU8('vin,vmodel,timer\n')
 		});
@@ -78,14 +78,14 @@ describe('isBackupArchive', () => {
 		expect(isBackupArchive(zip)).toBe(false);
 	});
 
-	it('rejects bytes that are not a ZIP at all', () => {
+	it('rejects bytes that are not a ZIP at all', async () => {
 		expect(isBackupArchive(strToU8('not an archive'))).toBe(false);
 	});
 });
 
 describe('readBackup', () => {
-	it('skips an export written in a format it cannot read', () => {
-		const only = entry(7);
+	it('skips an export written in a format it cannot read', async () => {
+		const only = await entry(7);
 		const future: BackupEntry = {
 			record: { ...only.record, version: RECORD_VERSION + 1 },
 			blobs: only.blobs
@@ -97,7 +97,7 @@ describe('readBackup', () => {
 		expect(contents.skipped).toEqual([future.record.id]);
 	});
 
-	it('refuses a ZIP that is not one of ours', () => {
+	it('refuses a ZIP that is not one of ours', async () => {
 		const zip = zipSync({ 'notes.txt': strToU8('hello') });
 
 		expect(() => readBackup(zip)).toThrow(/not a backup/);

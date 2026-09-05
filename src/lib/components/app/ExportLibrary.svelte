@@ -53,6 +53,13 @@
 		if (selected.length === 0) selectedVin = null;
 	}
 
+	/** Everything one vehicle's exports cover end to end, holes included. */
+	function span(group: VehicleGroup): string {
+		const start = Math.min(...group.entries.map((entry) => entry.startTime));
+		const end = Math.max(...group.entries.map((entry) => entry.endTime));
+		return `${dateOnly(start)} – ${dateOnly(end)}`;
+	}
+
 	function label(group: VehicleGroup): string {
 		if (group.isDemo) return 'Demonstration data';
 		const vin = settings.revealVin ? group.vin : maskVin(group.vin);
@@ -90,7 +97,8 @@
 			<div>
 				<h2 class="text-lg font-medium">Kept in this browser</h2>
 				<p class="text-sm text-muted-foreground">
-					Stored on this device only. Open one, or several from the same car at once.
+					Stored on this device only. Open one, or every export from the same car as a single
+					timeline.
 				</p>
 			</div>
 			<div class="flex items-center gap-2">
@@ -111,15 +119,37 @@
 		</div>
 
 		{#each history.groups as group (group.vin)}
+			{@const ids = group.entries.map((entry) => entry.id)}
+			{@const whole = history.estimate(ids)}
 			<Card.Root class="bg-card/50">
 				<Card.Header>
-					<Card.Title class="flex items-center gap-2 text-base">
-						<CarIcon class="size-4 text-primary" />
-						<span class="font-mono text-sm font-normal">{label(group)}</span>
-						{#if group.isDemo}
-							<Badge variant="secondary">Demo</Badge>
+					<div class="flex flex-wrap items-start justify-between gap-3">
+						<div class="space-y-1">
+							<Card.Title class="flex items-center gap-2 text-base">
+								<CarIcon class="size-4 text-primary" />
+								<span class="font-mono text-sm font-normal">{label(group)}</span>
+								{#if group.isDemo}
+									<Badge variant="secondary">Demo</Badge>
+								{/if}
+							</Card.Title>
+							{#if group.entries.length > 1}
+								<p class="text-xs text-muted-foreground">
+									{span(group)} across {group.entries.length} exports, up to {bytes(whole.bytes)} of memory
+									at once.
+									{#if whole.bytes > VERY_HEAVY}
+										That is a great deal for one tab to hold.
+									{/if}
+								</p>
+							{/if}
+						</div>
+
+						{#if group.entries.length > 1}
+							<Button size="sm" disabled={data.status === 'loading'} onclick={() => data.open(ids)}>
+								<LayersIcon class="size-4" />
+								Open all {group.entries.length}
+							</Button>
 						{/if}
-					</Card.Title>
+					</div>
 				</Card.Header>
 
 				<Card.Content class="space-y-1">

@@ -21,16 +21,16 @@ function sample(days = 3, seed = 7): Dataset {
 	return generateDemoDataset({ seed, days, timeZone: ZONE });
 }
 
-function keep(dataset: Dataset) {
+async function keep(dataset: Dataset) {
 	const derived = analyze(dataset, ZONE);
 	const { packed } = packDataset(dataset);
 	return encodeExport(packed, derived, true);
 }
 
 describe('encodeExport', () => {
-	it('summarises the export without needing its buffers', () => {
+	it('summarises the export without needing its buffers', async () => {
 		const dataset = sample();
-		const { record, blobs } = keep(dataset);
+		const { record, blobs } = await keep(dataset);
 
 		expect(record.version).toBe(RECORD_VERSION);
 		expect(record.id).toBe(dataset.exportId);
@@ -43,22 +43,22 @@ describe('encodeExport', () => {
 		expect(record.storedBytes).toBeGreaterThan(0);
 	});
 
-	it('compresses to a fraction of the raw size', () => {
+	it('compresses to a fraction of the raw size', async () => {
 		const dataset = sample();
 		const raw = [...dataset.columns.values()].reduce(
 			(sum, column) => sum + column.data.byteLength,
 			dataset.time.byteLength
 		);
-		const { record } = keep(dataset);
+		const { record } = await keep(dataset);
 
 		expect(record.storedBytes).toBeLessThan(raw / 4);
 	});
 });
 
 describe('decodeExport', () => {
-	it('returns every sample and reading unchanged', () => {
+	it('returns every sample and reading unchanged', async () => {
 		const dataset = sample();
-		const { record, blobs } = keep(dataset);
+		const { record, blobs } = await keep(dataset);
 		const restored = unpackDataset(decodeExport(record, blobs));
 
 		expect(restored.time).toEqual(dataset.time);
@@ -74,10 +74,10 @@ describe('decodeExport', () => {
 		}
 	});
 
-	it('produces the same analysis it was stored with', () => {
+	it('produces the same analysis it was stored with', async () => {
 		const dataset = sample();
 		const before = analyze(dataset, ZONE);
-		const { record, blobs } = keep(dataset);
+		const { record, blobs } = await keep(dataset);
 		const after = analyze(unpackDataset(decodeExport(record, blobs)), ZONE);
 
 		expect(after.trips.length).toBe(before.trips.length);
@@ -88,8 +88,8 @@ describe('decodeExport', () => {
 		);
 	});
 
-	it('refuses a record written in a format it does not know', () => {
-		const { record, blobs } = keep(sample());
+	it('refuses a record written in a format it does not know', async () => {
+		const { record, blobs } = await keep(sample());
 		const future = { ...record, version: RECORD_VERSION + 1 };
 
 		expect(() => decodeExport(future, blobs)).toThrow(StoredFormatError);
@@ -97,16 +97,16 @@ describe('decodeExport', () => {
 });
 
 describe('specToUse', () => {
-	it('takes the registry entry when the two agree on storage', () => {
-		const { record } = keep(sample());
+	it('takes the registry entry when the two agree on storage', async () => {
+		const { record } = await keep(sample());
 		const stored = record.columns.find((column) => column.key === 'esp_vehspd')!;
 		const outdated = { ...stored.spec, label: 'Speed, as labelled last year' };
 
 		expect(specToUse(outdated).label).toBe('Speed');
 	});
 
-	it('keeps the stored entry when the registry would read the bytes differently', () => {
-		const { record } = keep(sample());
+	it('keeps the stored entry when the registry would read the bytes differently', async () => {
+		const { record } = await keep(sample());
 		const stored = record.columns.find((column) => column.key === 'esp_vehspd')!;
 		const rescaled = { ...stored.spec, scale: stored.spec.scale * 2 };
 
@@ -115,7 +115,7 @@ describe('specToUse', () => {
 });
 
 describe('sourceFromExport', () => {
-	it('merges straight out of storage, one column at a time', () => {
+	it('merges straight out of storage, one column at a time', async () => {
 		const first = sample(3, 11);
 		const second = generateDemoDataset({
 			seed: 21,
@@ -125,8 +125,8 @@ describe('sourceFromExport', () => {
 			endTime: first.time[first.time.length - 1] + 14 * 86400
 		});
 
-		const a = keep(first);
-		const b = keep(second);
+		const a = await keep(first);
+		const b = await keep(second);
 		const merged = mergeSources([
 			sourceFromExport(a.record, a.blobs),
 			sourceFromExport(b.record, b.blobs)
@@ -142,8 +142,8 @@ describe('sourceFromExport', () => {
 });
 
 describe('estimateOpen', () => {
-	it('adds up the memory the chosen exports would take', () => {
-		const { record } = keep(sample());
+	it('adds up the memory the chosen exports would take', async () => {
+		const { record } = await keep(sample());
 		const estimate = estimateOpen([record, record]);
 
 		expect(estimate.rows).toBe(record.rows * 2);

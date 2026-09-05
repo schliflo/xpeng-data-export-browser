@@ -71,8 +71,19 @@ export interface StoredBlob {
 
 const DTYPE_BYTES: Record<Dtype, number> = { u8: 1, i8: 1, u16: 2, i16: 2, u32: 4, f32: 4 };
 
-function compress(buffer: ArrayBuffer): Uint8Array {
-	return gzipSync(new Uint8Array(buffer), { level: 6 });
+/**
+ * Compression uses the browser's own gzip rather than fflate's. Pure JavaScript
+ * spends about four seconds on a month of telemetry, and the user spends all of
+ * it watching a progress bar; the native codec does the same work in a fraction
+ * of that. fflate stays as the fallback for anywhere `CompressionStream` is
+ * missing, and the two formats are the same gzip either way.
+ */
+async function compress(buffer: ArrayBuffer): Promise<Uint8Array> {
+	if (typeof CompressionStream === 'undefined') {
+		return gzipSync(new Uint8Array(buffer), { level: 6 });
+	}
+	const gzip = new Blob([buffer]).stream().pipeThrough(new CompressionStream('gzip'));
+	return new Uint8Array(await new Response(gzip).arrayBuffer());
 }
 
 /** The exact bytes behind a view, without the buffer it may be a window on. */
@@ -87,19 +98,19 @@ function decompress(bytes: ArrayBuffer): ArrayBuffer {
 	return exactBuffer(gunzipSync(new Uint8Array(bytes)));
 }
 
-export function encodeExport(
+export async function encodeExport(
 	packed: PackedDataset,
 	derived: DerivedData,
 	isDemo: boolean
-): { record: ExportRecord; blobs: StoredBlob[] } {
+): Promise<{ record: ExportRecord; blobs: StoredBlob[] }> {
 	const id = packed.exportId;
 	const blobs: StoredBlob[] = [
-		{ id, name: TIME_BLOB, bytes: exactBuffer(compress(packed.timeBuffer)) }
+		{ id, name: TIME_BLOB, bytes: exactBuffer(await compress(packed.timeBuffer)) }
 	];
 	const columns: StoredColumn[] = [];
 
 	for (const column of packed.columns) {
-		blobs.push({ id, name: column.spec.key, bytes: exactBuffer(compress(column.buffer)) });
+		blobs.push({ id, name: column.spec.key, bytes: exactBuffer(await compress(column.buffer)) });
 		columns.push({
 			key: column.spec.key,
 			spec: column.spec,
