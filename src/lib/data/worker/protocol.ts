@@ -7,8 +7,8 @@
  * columns travel as plain descriptors and are reassembled on arrival.
  */
 
-import type { ColumnSpec } from '../schema/columns';
-import type { Column, Dataset } from '../store/columnar';
+import type { ColumnSpec, TypedArray } from '../schema/columns';
+import type { Column, CoverageWindow, Dataset } from '../store/columnar';
 import type { DerivedData } from '../analytics';
 import type { StreamId } from '../schema/streams';
 
@@ -33,12 +33,22 @@ export interface PackedDataset {
 	rowsParsed: number;
 	bytesParsed: number;
 	aligned: boolean;
+	coverage?: CoverageWindow[];
 }
+
+/**
+ * What became of the copy the browser tries to keep. Storage can be refused —
+ * private windows, a full disk — and that must never cost the user the export
+ * they just waited for, so the outcome is reported rather than thrown.
+ */
+export type KeptOutcome =
+	{ ok: true; id: string; bytes: number; replaced: boolean } | { ok: false; reason: string };
 
 export type WorkerRequest =
 	| { type: 'parse'; files: File[]; timeZone: string }
 	| { type: 'demo'; seed: number; timeZone: string; awd: boolean }
-	| { type: 'retime'; timeZone: string };
+	| { type: 'open'; ids: string[]; timeZone: string }
+	| { type: 'backup'; ids: string[] };
 
 export type WorkerResponse =
 	| {
@@ -49,18 +59,34 @@ export type WorkerResponse =
 			total: number;
 			detail?: string;
 	  }
-	| { type: 'ready'; dataset: PackedDataset; derived: DerivedData }
-	| { type: 'derived'; derived: DerivedData }
+	| { type: 'ready'; dataset: PackedDataset; derived: DerivedData; kept: KeptOutcome | null }
+	| { type: 'restored'; ids: string[]; skipped: string[] }
+	| { type: 'backup'; chunks: Uint8Array[]; name: string }
 	| { type: 'error'; message: string; hint?: string };
 
-export type ParsePhase = 'reading' | 'parsing' | 'joining' | 'analyzing' | 'generating';
+export type ParsePhase =
+	| 'reading'
+	| 'parsing'
+	| 'joining'
+	| 'analyzing'
+	| 'generating'
+	| 'storing'
+	| 'loading'
+	| 'merging'
+	| 'packing'
+	| 'restoring';
 
 export const PHASE_LABELS: Record<ParsePhase, string> = {
 	reading: 'Reading files',
 	parsing: 'Parsing signals',
 	joining: 'Lining up the timeline',
 	analyzing: 'Finding patterns',
-	generating: 'Building demo data'
+	generating: 'Building demo data',
+	storing: 'Keeping a copy in this browser',
+	loading: 'Reading the kept export',
+	merging: 'Joining the timelines',
+	packing: 'Packing the backup',
+	restoring: 'Restoring from the backup'
 };
 
 /** Detaches a dataset's buffers for transfer to the main thread. */
@@ -95,14 +121,23 @@ export function packDataset(dataset: Dataset): { packed: PackedDataset; transfer
 			emptyColumns: dataset.emptyColumns,
 			rowsParsed: dataset.rowsParsed,
 			bytesParsed: dataset.bytesParsed,
-			aligned: dataset.aligned
+			aligned: dataset.aligned,
+			coverage: dataset.coverage
 		},
 		transfer
 	};
 }
 
-/** Copies a possibly-subarray view into a standalone buffer. */
+/**
+ * The standalone buffer behind a view. Builders hand back subarrays of an
+ * oversized buffer and those must be copied, but a merged or decoded column
+ * already owns its buffer exactly — copying it there would briefly double the
+ * memory of a dataset that may already be a gigabyte.
+ */
 function sliceBuffer(view: ArrayBufferView): ArrayBuffer {
+	if (view.byteOffset === 0 && view.byteLength === view.buffer.byteLength) {
+		return view.buffer as ArrayBuffer;
+	}
 	return view.buffer.slice(view.byteOffset, view.byteOffset + view.byteLength) as ArrayBuffer;
 }
 
@@ -129,11 +164,13 @@ export function unpackDataset(packed: PackedDataset): Dataset {
 		emptyColumns: packed.emptyColumns,
 		rowsParsed: packed.rowsParsed,
 		bytesParsed: packed.bytesParsed,
-		aligned: packed.aligned
+		aligned: packed.aligned,
+		coverage: packed.coverage
 	};
 }
 
-function viewFor(spec: ColumnSpec, buffer: ArrayBuffer) {
+/** The typed-array view a column's raw bytes should be read through. */
+export function viewFor(spec: ColumnSpec, buffer: ArrayBuffer): TypedArray {
 	switch (spec.dtype) {
 		case 'u8':
 			return new Uint8Array(buffer);

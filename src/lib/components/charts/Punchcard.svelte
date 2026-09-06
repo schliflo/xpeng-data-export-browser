@@ -117,7 +117,7 @@
 						<span class="text-muted-foreground tabular-nums">{num(share, 1)}% of the week</span>
 					{/if}
 				{:else}
-					<span class="text-muted-foreground">nothing, all month</span>
+					<span class="text-muted-foreground">never</span>
 				{/if}
 			</p>
 		</ChartTooltip>

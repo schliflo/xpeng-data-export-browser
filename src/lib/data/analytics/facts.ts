@@ -50,7 +50,12 @@ export interface FactInputs {
 	speed: SpeedProfile;
 	hardestBrakes: ExtremeEvent[];
 	timeZone: string;
-	windowDays: number;
+	/** Seconds the exports account for — never the calendar span. */
+	recordedSeconds: number;
+	/** Calendar days the exports account for. */
+	recordedDays: number;
+	/** Exports behind these numbers; more than one means a merged record. */
+	sources: number;
 }
 
 const nf = (value: number, digits = 0) =>
@@ -89,9 +94,9 @@ function hourLabel(hour: number): string {
 	return `${hour.toString().padStart(2, '0')}:00`;
 }
 
-/** The opening sequence: the numbers that describe the month at a glance. */
+/** The opening sequence: the numbers that describe the record at a glance. */
 export function headlineFacts(input: FactInputs): Fact[] {
-	const { trips, days, charging, speed, timeZone, windowDays } = input;
+	const { trips, days, charging, speed, timeZone, recordedSeconds, recordedDays, sources } = input;
 	const facts: Fact[] = [];
 
 	const totalKm = days.reduce((sum, day) => sum + day.distanceKm, 0);
@@ -101,22 +106,25 @@ export function headlineFacts(input: FactInputs): Fact[] {
 		facts.push({
 			id: 'distance',
 			tone: 'headline',
-			kicker: `In ${windowDays} days you drove`,
+			kicker:
+				sources > 1
+					? `Across ${sources} exports, in ${recordedDays} days you drove`
+					: `In ${recordedDays} days you drove`,
 			value: nf(totalKm),
 			unit: 'km',
-			detail: `Across ${trips.length} trips, averaging ${nf(totalKm / Math.max(1, days.length), 1)} km a day.`,
+			detail: `Across ${trips.length} trips, averaging ${nf(totalKm / Math.max(1, recordedDays), 1)} km a day.`,
 			href: '/dash/overview'
 		});
 	}
 
 	if (drivingSeconds > 0) {
-		const share = (drivingSeconds / (windowDays * 86400)) * 100;
+		const share = (drivingSeconds / recordedSeconds) * 100;
 		facts.push({
 			id: 'time-driving',
 			tone: 'headline',
 			kicker: 'Time behind the wheel',
 			value: duration(drivingSeconds),
-			detail: `That is ${nf(share, 1)}% of the month. The car spent the rest of it parked.`,
+			detail: `That is ${nf(share, 1)}% of the time recorded. The car spent the rest of it parked.`,
 			href: '/dash/trips'
 		});
 	}
@@ -272,7 +280,7 @@ export function habitFacts(input: FactInputs): Fact[] {
 		});
 	}
 
-	const idleDays = days.filter((day) => day.distanceKm === 0);
+	const idleDays = days.filter((day) => day.covered && day.distanceKm === 0);
 	if (idleDays.length > 0) {
 		facts.push({
 			id: 'idle-days',
@@ -354,16 +362,16 @@ export function habitFacts(input: FactInputs): Fact[] {
  * much of the car's life it records.
  */
 export function quirkFacts(input: FactInputs): Fact[] {
-	const { dataset, tyres, thermal, timeZone, windowDays } = input;
+	const { dataset, tyres, thermal, timeZone, recordedSeconds } = input;
 	const facts: Fact[] = [];
 
-	const coverage = (dataset.time.length / (windowDays * 86400)) * 100;
+	const coverage = (dataset.time.length / recordedSeconds) * 100;
 	facts.push({
 		id: 'sample-count',
 		tone: 'quirk',
 		kicker: 'Moments recorded',
 		value: nf(dataset.time.length),
-		detail: `One sample per second, covering ${nf(coverage)}% of the month. The gaps are when the car was asleep — it stops logging rather than recording zeros.`,
+		detail: `One sample per second, covering ${nf(coverage)}% of the time recorded. The gaps are when the car was asleep — it stops logging rather than recording zeros.`,
 		href: '/dash/explorer'
 	});
 

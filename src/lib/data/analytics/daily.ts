@@ -13,6 +13,7 @@
 import { valueAt, type Dataset } from '../store/columnar';
 import type { Trip } from './trips';
 import type { ChargeSession } from './charging';
+import { coverageWindows } from './sessions';
 
 export interface DayBucket {
 	/** Local calendar day as `YYYY-MM-DD`. */
@@ -27,6 +28,12 @@ export interface DayBucket {
 	maxSpeed: number;
 	socMin: number;
 	socMax: number;
+	/**
+	 * False when no export accounts for this day. Merged timelines keep the
+	 * calendar unbroken, and an uncovered day means "not recorded" rather than
+	 * "the car did not move".
+	 */
+	covered: boolean;
 }
 
 const dayKeyFormatters = new Map<string, Intl.DateTimeFormat>();
@@ -186,7 +193,8 @@ export function bucketDays(
 				energyKwh: 0,
 				maxSpeed: 0,
 				socMin: Infinity,
-				socMax: -Infinity
+				socMax: -Infinity,
+				covered: true
 			};
 			buckets.set(key, bucket);
 		}
@@ -230,9 +238,13 @@ export function bucketDays(
 	}
 
 	const result = [...buckets.values()].sort((a, b) => a.date.localeCompare(b.date));
+	const windows = coverageWindows(dataset);
 	for (const bucket of result) {
 		if (bucket.socMin === Infinity) bucket.socMin = NaN;
 		if (bucket.socMax === -Infinity) bucket.socMax = NaN;
+		const start = startOfLocalDay(bucket.date, timeZone);
+		const end = start + 86400;
+		bucket.covered = windows.some((window) => window.startTime < end && window.endTime > start);
 	}
 	return result;
 }

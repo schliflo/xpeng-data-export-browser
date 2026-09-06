@@ -11,6 +11,7 @@
 	import { CATEGORY_LABELS, type ColumnCategory } from '$lib/data/schema/columns';
 	import { valueAt } from '$lib/data/store/columnar';
 	import { dateTime, num } from '$lib/utils/format';
+	import { downloadBlob } from '$lib/utils/download';
 	import DownloadIcon from '@lucide/svelte/icons/download';
 
 	const dataset = $derived(data.dataset!);
@@ -98,13 +99,10 @@
 			lines.push(`${new Date(t * 1000).toISOString()},${values.join(',')}`);
 		}
 
-		const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
-		const url = URL.createObjectURL(blob);
-		const link = document.createElement('a');
-		link.href = url;
-		link.download = `xpeng-signals-${new Date(window.from * 1000).toISOString().slice(0, 10)}.csv`;
-		link.click();
-		URL.revokeObjectURL(url);
+		downloadBlob(
+			`xpeng-signals-${new Date(window.from * 1000).toISOString().slice(0, 10)}.csv`,
+			new Blob([lines.join('\n')], { type: 'text/csv' })
+		);
 	}
 
 	function resetZoom() {

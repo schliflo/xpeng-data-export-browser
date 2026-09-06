@@ -6,8 +6,9 @@ behaviour, driving style, and a plain account of what the file reveals about
 your daily life.
 
 Everything runs in the browser. There is no server to send anything to: the app
-is a set of static files, the export is parsed by a worker inside the page, and
-closing the tab discards it.
+is a set of static files, and the export is parsed by a worker inside the page.
+Exports are kept on your own device so they can be reopened later, and several
+of them can be read as one continuous record.
 
 ## What it looks like
 
@@ -79,18 +80,43 @@ pnpm check        # types
 pnpm build        # production build
 ```
 
+## Keeping exports
+
+Every export you open is kept in this browser, in IndexedDB, as the parsed
+columns rather than the original CSV: gzipped one signal at a time, which comes
+to five to fifteen megabytes for a month that arrived as 340 MB of text. The
+start page lists what is kept and reopens any of it in a second or two, with
+the analysis recomputed rather than stored.
+
+Nothing is uploaded — there is nowhere to upload it to. Removing an export is
+one click, and the browser's own site-data controls clear everything at once.
+
+XPeng only ever gives you a rolling thirty days, so the point of keeping them
+is putting them together. Selecting several exports from the same car opens
+them as a single timeline: the timestamps are merged, the newer export wins
+wherever two of them describe the same second, and the stretches no export
+covers are marked as unrecorded rather than counted as days the car stood
+still.
+
+Browser storage is not a safe place for the only copy — it can be cleared, and
+Safari discards it after a week without a visit. **Back up** writes everything
+kept as one ZIP: a manifest, and per export the record and its compressed
+buffers. Dropping that ZIP back on the start page restores it, in this browser
+or any other.
+
 ## Working offline
 
 After the first visit the app opens without a connection. A service worker
 stores the app's own files — scripts, styles, fonts, icons and pages, about
 1.5 MB in all — when it installs, and serves them from that store from then
-on. The export is never stored: what is kept is the app, not anything dropped
-into it, and closing the tab still discards the data. The browser's menu can
-also install it as an app, which opens it in a window of its own.
+on. That store holds the app and nothing else; kept exports live in the
+browser's database beside it, so an export opens without a connection too. The
+browser's menu can also install it as an app, which opens it in a window of its
+own.
 
 A new deployment installs quietly in the background and waits. The page then
 offers a reload, and nothing happens until you take it: a page that restarted
-on its own would throw away the export it holds.
+on its own would clear the export on screen mid-read.
 
 Trying it needs a production build, since the dev server serves everything
 live:
@@ -168,10 +194,11 @@ them:
 ```
 src/lib/data/
   schema/      column registry — units, sentinels, storage type, labels
-  parse/       streaming CSV reader, ZIP, ordering, stream alignment
+  parse/       streaming CSV reader, ZIP, ordering, alignment, merging
   store/       columnar storage and the min/max pyramid the charts read
   analytics/   trips, charging, battery, driving style, doors, facts
   worker/      the worker and its message protocol
+src/lib/history/             kept exports: storage, compression, backup archive
 src/lib/demo/  synthetic month generator
 src/lib/offline/             what the service worker keeps, and how it finds it
 src/service-worker.ts        the service worker itself
@@ -190,8 +217,10 @@ registry does not know about are still parsed and still plottable.
 
 `pnpm test` covers the parser (byte-order marks, chunk boundaries, duplicates,
 part ordering, sentinels), the analytics against hand-built cases with known
-answers, the demo generator against the ground truth it was built from, and
-what the service worker decides to keep.
+answers, the demo generator against the ground truth it was built from, what
+the service worker decides to keep, and the storage layer end to end — the
+compression round trip, merging exports that overlap, the backup archive, and
+the database itself against `fake-indexeddb`.
 
 If a `.samples/` directory is present it is also checked against a real export
 end to end; that directory is git-ignored, because a real export identifies a

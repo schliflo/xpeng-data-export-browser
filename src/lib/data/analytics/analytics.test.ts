@@ -6,9 +6,15 @@ import { integrateEnergy, integrateSignal } from './energy';
 import { detectTrips } from './trips';
 import { detectCharging, detectChargeLimit, detectScheduledHour, localHour } from './charging';
 import { bucketDays, localDayKey, startOfLocalDay } from './daily';
+import { phantomDrain } from './battery';
+import { topEvents } from './drivingStyle';
 
 /** Builds a dataset from per-second column values; `null` means no reading. */
-function makeDataset(seconds: number[], columns: Record<string, (number | null)[]>): Dataset {
+function makeDataset(
+	seconds: number[],
+	columns: Record<string, (number | null)[]>,
+	overrides: Partial<Dataset> = {}
+): Dataset {
 	const built = new Map<string, Column>();
 	for (const [key, values] of Object.entries(columns)) {
 		const spec = COLUMNS.get(key) as ColumnSpec;
@@ -28,7 +34,8 @@ function makeDataset(seconds: number[], columns: Record<string, (number | null)[
 		emptyColumns: [],
 		rowsParsed: seconds.length,
 		bytesParsed: 0,
-		aligned: true
+		aligned: true,
+		...overrides
 	};
 }
 
@@ -328,5 +335,92 @@ describe('bucketDays', () => {
 		expect(days.map((d) => d.date)).toEqual(['2026-08-02', '2026-08-03', '2026-08-04']);
 		expect(days[0].distanceKm).toBe(12);
 		expect(days[1].distanceKm).toBe(0);
+	});
+});
+
+describe('coverage across merged exports', () => {
+	/** Two short recordings ten days apart, with the battery lower afterwards. */
+	function twoWindows(overrides: Partial<Dataset> = {}): Dataset {
+		return makeDataset(
+			[0, 1, 2, 864000, 864001, 864002],
+			{ ldcu_bms_soc_disp: [80, 80, 80, 70, 70, 70] },
+			overrides
+		);
+	}
+
+	const trips = [
+		{ startTime: 0, endTime: 2 },
+		{ startTime: 864000, endTime: 864002 }
+	];
+
+	it('reads a long silence as drain when one export covers it', () => {
+		const drain = phantomDrain(twoWindows(), [], trips);
+
+		expect(drain.events).toHaveLength(1);
+		expect(drain.events[0].socLost).toBeCloseTo(10, 6);
+		expect(drain.longestSleepHours).toBeCloseTo(239.99, 1);
+	});
+
+	it('ignores the same silence when it falls between two exports', () => {
+		const dataset = twoWindows({
+			coverage: [
+				{ startTime: 0, endTime: 2, exportId: 'DA-a' },
+				{ startTime: 864000, endTime: 864002, exportId: 'DA-b' }
+			]
+		});
+
+		const drain = phantomDrain(dataset, [], trips);
+
+		expect(drain.events).toEqual([]);
+		expect(drain.longestSleepHours).toBe(0);
+	});
+
+	it('marks the days no export accounts for', () => {
+		const dataset = twoWindows({
+			coverage: [
+				{ startTime: 0, endTime: 2, exportId: 'DA-a' },
+				{ startTime: 864000, endTime: 864002, exportId: 'DA-b' }
+			]
+		});
+
+		const days = bucketDays(dataset, [], [], 'UTC');
+
+		expect(days).toHaveLength(11);
+		expect(days[0].covered).toBe(true);
+		expect(days[days.length - 1].covered).toBe(true);
+		expect(days.filter((day) => day.covered)).toHaveLength(2);
+	});
+
+	it('treats a single export as covering everything between its ends', () => {
+		const days = bucketDays(twoWindows(), [], [], 'UTC');
+
+		expect(days.every((day) => day.covered)).toBe(true);
+	});
+});
+
+describe('topEvents', () => {
+	it('takes the strongest moments, one per spacing window', () => {
+		const dataset = makeDataset(ramp(1000, 6), {
+			esp_vehspd: [10, 90, 80, 20, 70, 30]
+		});
+
+		const events = topEvents(dataset, 'esp_vehspd', 2, { spacing: 3 });
+
+		expect(events.map((event) => event.value)).toEqual([90, 70]);
+		expect(events.map((event) => event.time)).toEqual([1001, 1004]);
+	});
+
+	it('finds the lowest values when asked for the other sign', () => {
+		const dataset = makeDataset(ramp(1000, 4), { esp_vehlongaccel: [0.1, -0.9, -0.2, 0.4] });
+
+		const events = topEvents(dataset, 'esp_vehlongaccel', 1, { sign: -1 });
+
+		expect(events[0].value).toBeCloseTo(-0.9, 2);
+	});
+
+	it('returns nothing for a signal the car never reported', () => {
+		const dataset = makeDataset(ramp(1000, 3), { esp_vehspd: [null, null, null] });
+
+		expect(topEvents(dataset, 'esp_vehspd', 5)).toEqual([]);
 	});
 });

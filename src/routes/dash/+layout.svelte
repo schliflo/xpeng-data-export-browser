@@ -11,6 +11,7 @@
 	import { Switch } from '$lib/components/ui/switch';
 	import MadeBy from '$lib/components/app/MadeBy.svelte';
 	import Seo from '$lib/components/app/Seo.svelte';
+	import { SITE_NAME } from '$lib/seo';
 	import { data } from '$lib/state/dataset.svelte';
 	import { settings } from '$lib/state/settings.svelte';
 	import { maskVin, dateOnly } from '$lib/utils/format';
@@ -23,7 +24,6 @@
 	import TableIcon from '@lucide/svelte/icons/table-2';
 	import ShieldIcon from '@lucide/svelte/icons/shield-check';
 	import SettingsIcon from '@lucide/svelte/icons/settings-2';
-	import SparklesIcon from '@lucide/svelte/icons/sparkles';
 
 	let { children } = $props();
 
@@ -41,9 +41,17 @@
 	const stats = $derived(data.derived);
 	const section = $derived(sections.find((s) => s.href === page.url.pathname));
 
+	/** What is on screen: a fresh drop, a kept export, or several joined up. */
+	const sourceLabel = $derived.by(() => {
+		if (data.source.kind === 'merged') return `${data.source.ids.length} exports merged`;
+		if (data.isDemo) return 'Demonstration month';
+		return data.source.kind === 'reopened' ? 'Kept export' : 'Your export';
+	});
+
 	onMount(() => {
-		// The data lives in memory only, so a reloaded deep link has nothing
-		// to show and belongs back at the start.
+		// The dataset is not reloaded on navigation, so a deep link opened cold
+		// has nothing to show and belongs back at the start — where the exports
+		// kept in this browser are listed, ready to open again.
 		if (!data.isReady) goto('/');
 	});
 </script>
@@ -60,17 +68,23 @@
 		<Sidebar.Root collapsible="icon">
 			<Sidebar.Header>
 				<div class="flex items-center gap-2 px-2 py-1.5">
-					<div
-						class="flex size-8 shrink-0 items-center justify-center rounded-lg"
-						style="background: linear-gradient(135deg, var(--viz-1), var(--viz-3))"
+					<a
+						href="/"
+						class="shrink-0 rounded-lg transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+						aria-label="{SITE_NAME} — back to the start"
 					>
-						<SparklesIcon class="size-4 text-white" />
-					</div>
+						<img src="/favicon.svg" alt="" width="32" height="32" class="size-8" />
+					</a>
 					<div class="flex min-w-0 flex-col group-data-[collapsible=icon]:hidden">
-						<span class="truncate text-sm font-medium">Your export</span>
+						<span class="truncate text-sm font-medium">{sourceLabel}</span>
 						<span class="truncate text-xs text-muted-foreground">
 							{dateOnly(stats.startTime)} – {dateOnly(stats.endTime)}
 						</span>
+						{#if stats.sources > 1}
+							<span class="truncate text-xs text-muted-foreground">
+								{stats.recordedDays} days recorded
+							</span>
+						{/if}
 					</div>
 				</div>
 			</Sidebar.Header>
@@ -131,6 +145,11 @@
 					{#if data.isDemo}
 						<Badge variant="secondary">Demo data</Badge>
 					{/if}
+					{#if data.source.kind === 'merged'}
+						<Badge variant="secondary">Merged · {data.source.ids.length}</Badge>
+					{:else if data.source.kind === 'reopened'}
+						<Badge variant="secondary">Reopened</Badge>
+					{/if}
 
 					<Popover.Root>
 						<Popover.Trigger class={buttonVariants({ variant: 'ghost', size: 'icon' })}>
@@ -172,7 +191,7 @@
 									goto('/');
 								}}
 							>
-								Load a different export
+								Open another export
 							</Button>
 						</Popover.Content>
 					</Popover.Root>

@@ -1,9 +1,10 @@
 /**
  * Viewing preferences.
  *
- * Held in memory only, like everything else here. The timezone defaults to the
- * browser's, which is what makes "your day" mean the driver's day rather than
- * the warehouse partition the export was cut on.
+ * Held in memory only: these reset with the tab, unlike the exports themselves,
+ * which are kept. The timezone defaults to the browser's, which is what makes
+ * "your day" mean the driver's day rather than the warehouse partition the
+ * export was cut on.
  */
 
 class Settings {

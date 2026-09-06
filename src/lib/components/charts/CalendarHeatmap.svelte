@@ -5,6 +5,12 @@
   sequential single-hue ramp on a calendar grid rather than 31 bars: the
   weekday structure of a commute is visible at a glance this way. Hovering or
   tabbing to a square names the day and its total.
+
+  Several exports merged together leave holes between them, and a day inside a
+  hole is not a day the car stood still — nothing was recorded. Those squares
+  are drawn as an outline rather than a shade, so an absence never reads as a
+  measurement of zero. The grid stays unbroken either way: months are labelled
+  along the top, because a year of squares is no longer self-evidently a month.
 -->
 <script lang="ts">
 	import { prettyDay, num } from '$lib/utils/format';
@@ -14,6 +20,8 @@
 	interface Day {
 		date: string;
 		value: number;
+		/** False when no export accounts for this day. */
+		covered?: boolean;
 	}
 
 	interface Props {
@@ -27,6 +35,7 @@
 	let { days, unit = 'km', label = 'Distance', onSelect, selected = null }: Props = $props();
 
 	const max = $derived(Math.max(1, ...days.map((d) => d.value)));
+	const hasGaps = $derived(days.some((day) => day.covered === false));
 
 	let frame = $state<HTMLElement>();
 	let hovered = $state<Day | null>(null);
@@ -58,6 +67,37 @@
 			columns.push(current);
 		}
 		return columns;
+	});
+
+	const MONTHS = [
+		'Jan',
+		'Feb',
+		'Mar',
+		'Apr',
+		'May',
+		'Jun',
+		'Jul',
+		'Aug',
+		'Sep',
+		'Oct',
+		'Nov',
+		'Dec'
+	];
+
+	/** A label on the first column of each month, and the year when it turns. */
+	const months = $derived.by(() => {
+		let previous = '';
+		return weeks.map((week) => {
+			const first = week.find(Boolean);
+			if (!first) return '';
+			const [year, month] = first.date.split('-');
+			const key = `${year}-${month}`;
+			if (key === previous) return '';
+			const changedYear = previous !== '' && previous.slice(0, 4) !== year;
+			previous = key;
+			const name = MONTHS[Number(month) - 1];
+			return changedYear ? `${name} ${year}` : name;
+		});
 	});
 
 	/** Five steps of one hue; the lightest means "nothing happened". */
@@ -92,60 +132,87 @@
 
 <figure bind:this={frame} class="relative flex flex-col gap-3">
 	<div
-		class="flex items-end justify-center gap-2 overflow-x-auto pb-1"
+		class="overflow-x-auto pb-1"
 		role="group"
 		aria-label="{label} per day"
 		onpointerleave={() => (hovered = null)}
 	>
-		<div class="mr-1 flex shrink-0 flex-col gap-[4px] text-[10px] text-muted-foreground">
-			{#each WEEKDAYS as day, i (day)}
-				<span class="flex h-6 items-center leading-none">{i % 2 === 1 ? day : ''}</span>
-			{/each}
-		</div>
-		{#each weeks as week, w (w)}
-			<div class="flex shrink-0 flex-col gap-[4px]">
-				{#each week as day, d (d)}
-					{#if day}
-						<button
-							type="button"
-							class="h-6 w-6 rounded-[5px] transition-transform hover:scale-115 focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:outline-none"
-							class:ring-2={selected === day.date}
-							style="background: {tone(day.value)}"
-							aria-label="{prettyDay(day.date)}, {num(day.value, 1)} {unit}"
-							onpointerenter={(event) => enter(day, event.currentTarget)}
-							onfocus={(event) => enter(day, event.currentTarget)}
-							onblur={() => (hovered = null)}
-							onclick={() => onSelect?.(day.date)}
-						></button>
-					{:else}
-						<span class="h-6 w-6"></span>
-					{/if}
+		<div class="mx-auto flex w-max flex-col gap-1">
+			<div class="flex gap-2 pl-8 text-[10px] text-muted-foreground">
+				{#each months as month, m (m)}
+					<span class="w-6 shrink-0 leading-none whitespace-nowrap">{month}</span>
 				{/each}
 			</div>
-		{/each}
+
+			<div class="flex items-end gap-2">
+				<div class="flex w-7 shrink-0 flex-col gap-[4px] text-[10px] text-muted-foreground">
+					{#each WEEKDAYS as day, i (day)}
+						<span class="flex h-6 items-center leading-none">{i % 2 === 1 ? day : ''}</span>
+					{/each}
+				</div>
+				{#each weeks as week, w (w)}
+					<div class="flex shrink-0 flex-col gap-[4px]">
+						{#each week as day, d (d)}
+							{#if day}
+								<button
+									type="button"
+									class={[
+										'h-6 w-6 rounded-[5px] transition-transform hover:scale-115 focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:outline-none',
+										day.covered === false && 'border border-dashed border-border'
+									]}
+									class:ring-2={selected === day.date}
+									style="background: {day.covered === false ? 'transparent' : tone(day.value)}"
+									aria-label={day.covered === false
+										? `${prettyDay(day.date)}, not recorded`
+										: `${prettyDay(day.date)}, ${num(day.value, 1)} ${unit}`}
+									onpointerenter={(event) => enter(day, event.currentTarget)}
+									onfocus={(event) => enter(day, event.currentTarget)}
+									onblur={() => (hovered = null)}
+									onclick={() => onSelect?.(day.date)}
+								></button>
+							{:else}
+								<span class="h-6 w-6"></span>
+							{/if}
+						{/each}
+					</div>
+				{/each}
+			</div>
+		</div>
 	</div>
 
 	{#if hovered}
 		<ChartTooltip x={anchor.x} y={anchor.y} bounds={frameWidth}>
 			<p class="font-medium">{prettyDay(hovered.date)}</p>
 			<p class="mt-0.5 flex items-center gap-2">
-				<span class="size-2 shrink-0 rounded-full" style="background: {tone(hovered.value)}"></span>
-				{#if hovered.value > 0}
-					<span class="font-medium tabular-nums">{num(hovered.value, 1)} {unit}</span>
-					{#if rank}
-						<span class="text-muted-foreground">
-							{rank.place === 1 ? 'the busiest day' : `${rank.place} of ${rank.of} days driven`}
-						</span>
-					{/if}
+				{#if hovered.covered === false}
+					<span class="size-2 shrink-0 rounded-full border border-dashed border-border"></span>
+					<span class="text-muted-foreground">no export covers this day</span>
 				{:else}
-					<span class="text-muted-foreground">the car did not move</span>
+					<span class="size-2 shrink-0 rounded-full" style="background: {tone(hovered.value)}"
+					></span>
+					{#if hovered.value > 0}
+						<span class="font-medium tabular-nums">{num(hovered.value, 1)} {unit}</span>
+						{#if rank}
+							<span class="text-muted-foreground">
+								{rank.place === 1 ? 'the busiest day' : `${rank.place} of ${rank.of} days driven`}
+							</span>
+						{/if}
+					{:else}
+						<span class="text-muted-foreground">the car did not move</span>
+					{/if}
 				{/if}
 			</p>
 		</ChartTooltip>
 	{/if}
 
-	<figcaption class="flex items-center gap-2 text-xs text-muted-foreground">
+	<figcaption class="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
 		<span>{label}</span>
+		{#if hasGaps}
+			<span class="flex items-center gap-1">
+				<span class="h-3 w-3 rounded-[2px] border border-dashed border-border"></span>
+				not recorded
+			</span>
+		{/if}
 		<span class="ml-auto flex items-center gap-1">
 			<span>0</span>
 			{#each [0, 0.3, 0.55, 0.78, 1] as step (step)}

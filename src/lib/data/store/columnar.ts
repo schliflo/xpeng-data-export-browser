@@ -24,6 +24,17 @@ export interface Column {
 	max: number;
 }
 
+/**
+ * A stretch of time one export was able to speak for. A dataset built from a
+ * single export has one; a merged one has several, with holes between them
+ * that must not be mistaken for a car that sat still.
+ */
+export interface CoverageWindow {
+	startTime: number;
+	endTime: number;
+	exportId: string;
+}
+
 export interface Dataset {
 	/** Unix epoch seconds, ascending and unique. Shared by every column. */
 	time: Uint32Array;
@@ -42,6 +53,33 @@ export interface Dataset {
 	bytesParsed: number;
 	/** True when all streams shared one timeline; false when merge-joined. */
 	aligned: boolean;
+	/**
+	 * The periods this data actually accounts for. Absent means the obvious
+	 * one: first sample to last, no holes.
+	 */
+	coverage?: CoverageWindow[];
+}
+
+/**
+ * Windows in order, with overlapping ones joined. Exports issued days apart
+ * overlap by nearly a month, and what matters downstream is which instants are
+ * accounted for, not which file accounted for them.
+ */
+export function coalesceWindows(windows: CoverageWindow[]): CoverageWindow[] {
+	const sorted = [...windows].sort((a, b) => a.startTime - b.startTime);
+	const out: CoverageWindow[] = [];
+	for (const window of sorted) {
+		const last = out[out.length - 1];
+		if (last && window.startTime <= last.endTime) {
+			if (window.endTime > last.endTime) {
+				last.endTime = window.endTime;
+				last.exportId = window.exportId;
+			}
+			continue;
+		}
+		out.push({ ...window });
+	}
+	return out;
 }
 
 export function isNullRaw(raw: number, dtype: Dtype): boolean {

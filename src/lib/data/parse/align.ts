@@ -90,31 +90,56 @@ function reindex(result: StreamParseResult, unionTime: Uint32Array): Map<string,
 	return out;
 }
 
-/** Sorted union of every stream's timestamps. */
-function unionTimes(results: StreamParseResult[]): Uint32Array {
-	const cursors = results.map(() => 0);
+export interface MergedTimeline {
+	/** Ascending, unique union of every input timestamp. */
+	time: Uint32Array;
+	/**
+	 * For each input, the position its row `i` took in the union. Empty unless
+	 * asked for: at four bytes a row these cost as much as the timeline itself,
+	 * and the stream aligner has no use for them.
+	 */
+	maps: Uint32Array[];
+}
+
+/**
+ * Sorted union of several ascending timelines, merged in one pass.
+ *
+ * Used both to line up the streams of one export and to lay several exports
+ * end to end. Asking for `maps` turns it into a scatter plan: every source row
+ * learns where it landed, so columns can be written into the union without
+ * searching for their place.
+ */
+export function mergeTimelines(times: Uint32Array[], withMaps = false): MergedTimeline {
+	const cursors = times.map(() => 0);
 	let total = 0;
-	for (const r of results) total += r.time.length;
+	for (const t of times) total += t.length;
 	const out = new Uint32Array(total);
+	const maps = withMaps ? times.map((t) => new Uint32Array(t.length)) : [];
 	let n = 0;
 
 	for (;;) {
 		let next = Infinity;
-		for (let s = 0; s < results.length; s++) {
+		for (let s = 0; s < times.length; s++) {
 			const i = cursors[s];
-			if (i < results[s].time.length) {
-				const t = results[s].time[i];
+			if (i < times[s].length) {
+				const t = times[s][i];
 				if (t < next) next = t;
 			}
 		}
 		if (next === Infinity) break;
 		out[n++] = next;
-		for (let s = 0; s < results.length; s++) {
+		for (let s = 0; s < times.length; s++) {
 			const i = cursors[s];
-			if (i < results[s].time.length && results[s].time[i] === next) cursors[s] = i + 1;
+			if (i < times[s].length && times[s][i] === next) {
+				if (withMaps) maps[s][i] = n - 1;
+				cursors[s] = i + 1;
+			}
 		}
 	}
-	return out.subarray(0, n);
+
+	// Trimmed to size rather than left as a view: overlapping sources can leave
+	// the tail of the buffer unused, and it would be held for the session.
+	return { time: n === total ? out : out.slice(0, n), maps };
 }
 
 export function combineStreams(results: StreamParseResult[], exportId: string): Dataset {
@@ -123,7 +148,7 @@ export function combineStreams(results: StreamParseResult[], exportId: string): 
 	}
 
 	const aligned = verifyAlignment(results);
-	const time = aligned ? results[0].time : unionTimes(results);
+	const time = aligned ? results[0].time : mergeTimelines(results.map((r) => r.time)).time;
 	const columns = new Map<string, Column>();
 
 	for (const result of results) {
